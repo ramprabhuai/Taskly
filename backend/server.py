@@ -724,6 +724,96 @@ async def get_chat_history(session_id: str = None, user: dict = Depends(get_curr
     messages = await db.chat_messages.find(query, {"_id": 0}).sort("created_at", 1).to_list(100)
     return messages
 
+# ─── Persona Chat Route ───
+
+@api_router.post("/ai/persona-chat")
+async def persona_chat(data: PersonaChatRequest, user: dict = Depends(get_current_user)):
+    """Contextual AI chat with a specialized persona for a specific task."""
+    from persona_system import get_persona, get_persona_system_prompt
+    from emergentintegrations.llm.chat import LlmChat, UserMessage
+    
+    # Get task context
+    task = await db.tasks.find_one({"task_id": data.task_id, "user_id": user["user_id"]}, {"_id": 0})
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    persona = get_persona(data.persona_id)
+    session_id = data.session_id or f"persona_{data.task_id}_{uuid.uuid4().hex[:8]}"
+    
+    # Build conversation history
+    history = await db.persona_chats.find(
+        {"user_id": user["user_id"], "session_id": session_id},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(10)
+    history.reverse()
+    
+    history_text = ""
+    if history:
+        recent = history[-6:]
+        history_text = "\n\nRecent conversation:\n" + "\n".join(
+            [f"{'User' if h['role'] == 'user' else persona['name']}: {h['content'][:200]}" for h in recent]
+        )
+    
+    system_msg = get_persona_system_prompt(data.persona_id, task["title"]) + history_text
+    
+    # Store user message
+    user_msg_doc = {
+        "message_id": f"msg_{uuid.uuid4().hex[:12]}",
+        "user_id": user["user_id"],
+        "task_id": data.task_id,
+        "persona_id": data.persona_id,
+        "session_id": session_id,
+        "role": "user",
+        "content": data.message,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.persona_chats.insert_one(user_msg_doc)
+    
+    # Call AI (using Claude for persona chats - best for roleplay)
+    chat = LlmChat(
+        api_key=EMERGENT_LLM_KEY,
+        session_id=f"persona_{session_id}",
+        system_message=system_msg
+    )
+    chat.with_model("anthropic", "claude-sonnet-4-5-20250929")
+    
+    msg = UserMessage(text=data.message)
+    try:
+        response = await asyncio.wait_for(chat.send_message(msg), timeout=12.0)
+        logger.info(f"PERSONA CHAT: {persona['name']} responded for task '{task['title'][:30]}...'")
+    except asyncio.TimeoutError:
+        response = f"I'm taking a moment to think... Please try again! {persona['emoji']}"
+    except Exception as e:
+        logger.error(f"Persona chat error: {e}")
+        response = f"I'm having trouble connecting right now. Try again? {persona['emoji']}"
+    
+    # Store AI response
+    ai_msg_doc = {
+        "message_id": f"msg_{uuid.uuid4().hex[:12]}",
+        "user_id": user["user_id"],
+        "task_id": data.task_id,
+        "persona_id": data.persona_id,
+        "session_id": session_id,
+        "role": "assistant",
+        "content": response,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.persona_chats.insert_one(ai_msg_doc)
+    
+    return {
+        "response": response,
+        "session_id": session_id,
+        "persona_id": data.persona_id,
+        "persona_name": persona["name"],
+        "persona_emoji": persona["emoji"]
+    }
+
+@api_router.get("/ai/personas")
+async def get_personas():
+    """Get all available AI personas."""
+    from persona_system import get_all_personas
+    return get_all_personas()
+
 # ─── Dashboard Route ───
 
 @api_router.get("/dashboard")
