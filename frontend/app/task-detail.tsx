@@ -22,6 +22,15 @@ export default function TaskDetailScreen() {
   const [earnedXP, setEarnedXP] = useState(0);
   const [showBadgePopup, setShowBadgePopup] = useState(false);
   const [unlockedBadge, setUnlockedBadge] = useState<any>(null);
+  const [showPersonaChat, setShowPersonaChat] = useState(false);
+
+  // Get the persona for this task
+  const getTaskPersona = (): Persona => {
+    if (task?.persona_id && PERSONAS[task.persona_id]) {
+      return PERSONAS[task.persona_id];
+    }
+    return PERSONAS.life; // Default fallback
+  };
 
   useEffect(() => {
     if (id) loadTask();
