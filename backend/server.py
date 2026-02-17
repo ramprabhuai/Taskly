@@ -603,7 +603,7 @@ Respond in EXACTLY this JSON format, nothing else:
     chat.with_model("anthropic", "claude-sonnet-4-5-20250929")
     msg = UserMessage(text=f"Break down this task into subtasks: {data.title}")
     try:
-        response = await chat.send_message(msg)
+        response = await asyncio.wait_for(chat.send_message(msg), timeout=8.0)
         import json
         cleaned = response.strip()
         if "```" in cleaned:
