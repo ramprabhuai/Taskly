@@ -2,11 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/context/ThemeContext';
+import { useAuth } from '../../src/context/AuthContext';
 import { api } from '../../src/utils/api';
-import { COLORS, SPACING, RADIUS, SHADOWS, AI_MODELS } from '../../src/utils/constants';
+import { COLORS, SPACING, RADIUS, SHADOWS, AI_MODELS, MASCOTS } from '../../src/utils/constants';
 
 export default function AIAssistantScreen() {
   const { isDark } = useTheme();
+  const { user } = useAuth();
   const [messages, setMessages] = useState<{ role: string; content: string; model?: string }[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -15,31 +17,48 @@ export default function AIAssistantScreen() {
   const [showModelPicker, setShowModelPicker] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
-  const sendMessage = async () => {
-    if (!input.trim() || loading) return;
-    const userMsg = input.trim();
+  const sendMessage = async (text?: string) => {
+    const msgText = text || input.trim();
+    if (!msgText || loading) return;
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+    setMessages(prev => [...prev, { role: 'user', content: msgText }]);
     setLoading(true);
+
+    const timeout = setTimeout(() => {
+      setLoading(false);
+      setMessages(prev => [...prev, { role: 'assistant', content: "I'm taking a bit longer than expected. Please try again! 🤖", model: aiModel }]);
+    }, 15000);
+
     try {
-      const resp = await api.aiChat(userMsg, aiModel, sessionId || undefined);
+      const resp = await api.aiChat(msgText, aiModel, sessionId || undefined);
+      clearTimeout(timeout);
       setSessionId(resp.session_id);
       setMessages(prev => [...prev, { role: 'assistant', content: resp.response, model: resp.ai_model }]);
     } catch (e: any) {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Oops! Something went wrong. Please try again. 🤖' }]);
+      clearTimeout(timeout);
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Oops! Something went wrong. Please try again. 🤖', model: aiModel }]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    scrollRef.current?.scrollToEnd({ animated: true });
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
   }, [messages]);
 
   const modelInfo = AI_MODELS[aiModel as keyof typeof AI_MODELS];
+  const mascotEmoji = MASCOTS[user?.mascot as keyof typeof MASCOTS]?.emoji || '🦉';
+  const mascotName = MASCOTS[user?.mascot as keyof typeof MASCOTS]?.name || 'Wise Owl';
+
+  const SUGGESTIONS = [
+    '🔨 Help me break down a task',
+    '📅 Plan my week',
+    '🤔 I don\'t know how to start this task',
+  ];
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: isDark ? COLORS.dark.background : COLORS.light.background }]} testID="ai-assistant-screen">
+      {/* Header with model selector */}
       <View style={styles.header}>
         <Text style={[styles.title, { color: isDark ? COLORS.dark.text : COLORS.light.text }]}>AI Assistant</Text>
         <TouchableOpacity
@@ -49,10 +68,11 @@ export default function AIAssistantScreen() {
         >
           <Text style={styles.modelIcon}>{modelInfo.icon}</Text>
           <Text style={[styles.modelName, { color: modelInfo.color }]}>{modelInfo.name}</Text>
-          <Text style={styles.modelArrow}>▼</Text>
+          <Text style={[styles.modelArrow, { color: isDark ? COLORS.dark.textTertiary : COLORS.light.textTertiary }]}>▼</Text>
         </TouchableOpacity>
       </View>
 
+      {/* Model Picker Dropdown */}
       {showModelPicker && (
         <View style={[styles.modelPicker, { backgroundColor: isDark ? COLORS.dark.surface : COLORS.light.surface }, SHADOWS.lg]}>
           {Object.entries(AI_MODELS).map(([key, m]) => (
@@ -74,28 +94,32 @@ export default function AIAssistantScreen() {
       )}
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex} keyboardVerticalOffset={90}>
+        {/* Chat Messages Area */}
         <ScrollView
           ref={scrollRef}
           style={styles.chatArea}
           contentContainerStyle={styles.chatContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
+          {/* Welcome State - always visible when no messages */}
           {messages.length === 0 && (
-            <View style={styles.welcomeContainer}>
-              <Text style={styles.welcomeEmoji}>🤖</Text>
+            <View style={styles.welcomeContainer} testID="ai-welcome">
+              <Text style={styles.welcomeEmoji}>{mascotEmoji}</Text>
               <Text style={[styles.welcomeTitle, { color: isDark ? COLORS.dark.text : COLORS.light.text }]}>
-                Hi! I'm your Taskly AI
+                Hi {user?.name || 'there'}! I'm your Taskly AI
               </Text>
               <Text style={[styles.welcomeDesc, { color: isDark ? COLORS.dark.textSecondary : COLORS.light.textSecondary }]}>
-                I can help you plan tasks, break them down, or answer any question. Try asking me something!
+                Powered by {modelInfo.name} {modelInfo.icon}{'\n'}I can help you plan tasks, break them down, or answer any question!
               </Text>
               <View style={styles.suggestions}>
-                {['Break down my homework', 'Help me plan my week', 'How to write a good essay?'].map((s, i) => (
+                {SUGGESTIONS.map((s, i) => (
                   <TouchableOpacity
                     key={i}
                     testID={`suggestion-${i}`}
-                    style={[styles.suggestionChip, { backgroundColor: isDark ? COLORS.dark.surface : COLORS.light.surface }]}
-                    onPress={() => { setInput(s); }}
+                    style={[styles.suggestionChip, { backgroundColor: isDark ? COLORS.dark.surface : COLORS.light.surface }, SHADOWS.sm]}
+                    onPress={() => sendMessage(s.replace(/^[^\s]+\s/, ''))}
+                    activeOpacity={0.7}
                   >
                     <Text style={[styles.suggestionText, { color: isDark ? COLORS.dark.text : COLORS.light.text }]}>{s}</Text>
                   </TouchableOpacity>
@@ -104,9 +128,14 @@ export default function AIAssistantScreen() {
             </View>
           )}
 
+          {/* Messages */}
           {messages.map((msg, i) => (
             <View key={i} style={[styles.msgRow, msg.role === 'user' ? styles.msgRowUser : styles.msgRowAI]}>
-              {msg.role === 'assistant' && <Text style={styles.msgAvatar}>{AI_MODELS[msg.model as keyof typeof AI_MODELS]?.icon || '🤖'}</Text>}
+              {msg.role === 'assistant' && (
+                <View style={[styles.avatarBubble, { backgroundColor: (AI_MODELS[msg.model as keyof typeof AI_MODELS]?.color || COLORS.primary) + '20' }]}>
+                  <Text style={styles.msgAvatar}>{AI_MODELS[msg.model as keyof typeof AI_MODELS]?.icon || '🤖'}</Text>
+                </View>
+              )}
               <View style={[
                 styles.msgBubble,
                 msg.role === 'user' ? styles.msgBubbleUser : [styles.msgBubbleAI, { backgroundColor: isDark ? COLORS.dark.surface : COLORS.light.surface }]
@@ -117,18 +146,27 @@ export default function AIAssistantScreen() {
               </View>
             </View>
           ))}
+
+          {/* Typing indicator */}
           {loading && (
             <View style={[styles.msgRow, styles.msgRowAI]}>
-              <Text style={styles.msgAvatar}>{modelInfo.icon}</Text>
+              <View style={[styles.avatarBubble, { backgroundColor: modelInfo.color + '20' }]}>
+                <Text style={styles.msgAvatar}>{modelInfo.icon}</Text>
+              </View>
               <View style={[styles.msgBubble, styles.msgBubbleAI, { backgroundColor: isDark ? COLORS.dark.surface : COLORS.light.surface }]}>
-                <ActivityIndicator size="small" color={COLORS.primary} />
+                <View style={styles.typingDots}>
+                  <View style={[styles.dot, { backgroundColor: COLORS.primary }]} />
+                  <View style={[styles.dot, styles.dotDelay1, { backgroundColor: COLORS.primary }]} />
+                  <View style={[styles.dot, styles.dotDelay2, { backgroundColor: COLORS.primary }]} />
+                </View>
               </View>
             </View>
           )}
           <View style={{ height: 20 }} />
         </ScrollView>
 
-        <View style={[styles.inputBar, { backgroundColor: isDark ? COLORS.dark.surface : COLORS.light.surface }]}>
+        {/* Input Bar - ALWAYS visible */}
+        <View style={[styles.inputBar, { backgroundColor: isDark ? COLORS.dark.surface : COLORS.light.surface, borderTopColor: isDark ? COLORS.dark.border : COLORS.light.border }]}>
           <TextInput
             testID="ai-chat-input"
             style={[styles.input, { color: isDark ? COLORS.dark.text : COLORS.light.text, backgroundColor: isDark ? COLORS.dark.background : COLORS.light.background }]}
@@ -138,12 +176,13 @@ export default function AIAssistantScreen() {
             onChangeText={setInput}
             multiline
             maxLength={2000}
-            onSubmitEditing={sendMessage}
+            returnKeyType="send"
+            onSubmitEditing={() => sendMessage()}
           />
           <TouchableOpacity
             testID="ai-send-btn"
             style={[styles.sendBtn, (!input.trim() || loading) && styles.sendBtnDisabled]}
-            onPress={sendMessage}
+            onPress={() => sendMessage()}
             disabled={!input.trim() || loading}
           >
             <Text style={styles.sendText}>↑</Text>
@@ -162,7 +201,7 @@ const styles = StyleSheet.create({
   modelBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5, gap: 4 },
   modelIcon: { fontSize: 16 },
   modelName: { fontSize: 13, fontWeight: '800' },
-  modelArrow: { fontSize: 8, marginLeft: 2, color: '#999' },
+  modelArrow: { fontSize: 8, marginLeft: 2 },
   modelPicker: { position: 'absolute', top: 100, right: SPACING.md, zIndex: 100, borderRadius: RADIUS.lg, padding: SPACING.sm, width: 260 },
   modelOption: { flexDirection: 'row', alignItems: 'center', padding: SPACING.sm, borderRadius: RADIUS.md, gap: 10 },
   modelOptionIcon: { fontSize: 24 },
@@ -171,24 +210,29 @@ const styles = StyleSheet.create({
   modelOptionDesc: { fontSize: 12 },
   modelCheck: { fontSize: 18, fontWeight: '800' },
   chatArea: { flex: 1 },
-  chatContent: { padding: SPACING.md },
-  welcomeContainer: { alignItems: 'center', paddingTop: 40 },
+  chatContent: { padding: SPACING.md, flexGrow: 1 },
+  welcomeContainer: { alignItems: 'center', paddingTop: 30, flex: 1 },
   welcomeEmoji: { fontSize: 56 },
-  welcomeTitle: { fontSize: 22, fontWeight: '800', marginTop: SPACING.md },
-  welcomeDesc: { fontSize: 15, textAlign: 'center', marginTop: SPACING.sm, lineHeight: 22, paddingHorizontal: SPACING.lg },
-  suggestions: { marginTop: SPACING.lg, gap: 8, width: '100%' },
-  suggestionChip: { padding: SPACING.md, borderRadius: RADIUS.md, ...SHADOWS.sm },
-  suggestionText: { fontSize: 15 },
+  welcomeTitle: { fontSize: 22, fontWeight: '800', marginTop: SPACING.md, textAlign: 'center' },
+  welcomeDesc: { fontSize: 14, textAlign: 'center', marginTop: SPACING.sm, lineHeight: 22, paddingHorizontal: SPACING.md },
+  suggestions: { marginTop: SPACING.lg, gap: 10, width: '100%' },
+  suggestionChip: { padding: SPACING.md, borderRadius: RADIUS.lg },
+  suggestionText: { fontSize: 15, fontWeight: '600' },
   msgRow: { flexDirection: 'row', marginBottom: SPACING.sm, alignItems: 'flex-end' },
   msgRowUser: { justifyContent: 'flex-end' },
   msgRowAI: { justifyContent: 'flex-start' },
-  msgAvatar: { fontSize: 20, marginRight: 6, marginBottom: 4 },
-  msgBubble: { maxWidth: '80%', borderRadius: RADIUS.lg, padding: SPACING.md },
+  avatarBubble: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginRight: 6, marginBottom: 4 },
+  msgAvatar: { fontSize: 16 },
+  msgBubble: { maxWidth: '78%', borderRadius: RADIUS.lg, padding: SPACING.md },
   msgBubbleUser: { backgroundColor: COLORS.primary, borderBottomRightRadius: 4 },
   msgBubbleAI: { borderBottomLeftRadius: 4 },
   msgText: { fontSize: 15, lineHeight: 22 },
   msgTextUser: { color: '#FFF' },
-  inputBar: { flexDirection: 'row', alignItems: 'flex-end', padding: SPACING.sm, gap: 8, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.05)' },
+  typingDots: { flexDirection: 'row', gap: 4, paddingVertical: 4, paddingHorizontal: 4 },
+  dot: { width: 8, height: 8, borderRadius: 4, opacity: 0.4 },
+  dotDelay1: { opacity: 0.6 },
+  dotDelay2: { opacity: 0.8 },
+  inputBar: { flexDirection: 'row', alignItems: 'flex-end', padding: SPACING.sm, gap: 8, borderTopWidth: 1 },
   input: { flex: 1, borderRadius: RADIUS.lg, paddingHorizontal: SPACING.md, paddingVertical: 10, fontSize: 16, maxHeight: 120, minHeight: 44 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center' },
   sendBtnDisabled: { opacity: 0.4 },
