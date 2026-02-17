@@ -40,14 +40,10 @@ export function PersonaChat({ visible, persona, taskTitle, taskId, onClose, onSu
     setLoading(true);
 
     try {
-      const resp = await api.aiChat(
-        `[Context: You are the ${persona.name}. Task: "${taskTitle}". ${persona.tone}]\n\nUser: ${msgText}`,
-        'claude',
-        sessionId
-      );
+      const resp = await api.personaChat(msgText, taskId, persona.id, sessionId);
       setMessages(prev => [...prev, { role: 'assistant', content: resp.response }]);
     } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: "I'm having trouble right now. Try again? 🤖" }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: `I'm having trouble right now. Try again? ${persona.emoji}` }]);
     } finally {
       setLoading(false);
     }
