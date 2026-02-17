@@ -444,6 +444,16 @@ async def check_badges(user_id: str):
         new_badges.append("early_bird")
     if "night_owl" not in existing_badges and now.hour >= 21:
         new_badges.append("night_owl")
+    # Speed Runner - check if completed faster than estimate
+    recent_task = await db.tasks.find_one({"user_id": user_id, "completed": True}, {"_id": 0}, sort=[("completed_at", -1)])
+    if recent_task and "speed_runner" not in existing_badges:
+        if recent_task.get("estimated_time", 0) > 0:
+            new_badges.append("speed_runner")
+    # Zero Inbox - all tasks for today completed
+    if "zero_inbox" not in existing_badges:
+        active_today = await db.tasks.count_documents({"user_id": user_id, "completed": False})
+        if active_today == 0 and completed_count > 0:
+            new_badges.append("zero_inbox")
     for badge_type in new_badges:
         badge_def = next((b for b in BADGE_DEFINITIONS if b["badge_type"] == badge_type), None)
         if badge_def:
