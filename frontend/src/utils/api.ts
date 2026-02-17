@@ -142,6 +142,18 @@ class ApiClient {
     return this.fetch(`/ai/chat-history${qs}`);
   }
 
+  // Persona Chat
+  async personaChat(message: string, taskId: string, personaId: string, sessionId?: string) {
+    return this.fetch('/ai/persona-chat', {
+      method: 'POST',
+      body: JSON.stringify({ message, task_id: taskId, persona_id: personaId, session_id: sessionId }),
+    });
+  }
+
+  async getPersonas() {
+    return this.fetch('/ai/personas');
+  }
+
   // Dashboard
   async getDashboard() {
     return this.fetch('/dashboard');
