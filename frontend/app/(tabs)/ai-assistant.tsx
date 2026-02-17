@@ -121,7 +121,7 @@ export default function AIAssistantScreen() {
                 key={key}
                 testID={`ai-model-${key}`}
                 style={[styles.modelOption, aiModel === key && { backgroundColor: m.color + '15' }]}
-                onPress={() => { setAiModel(key); setShowModelPicker(false); }}
+                onPress={() => { setAiModel(key); setShowModelPicker(false); console.log('Model switched to:', key); }}
               >
                 <Text style={styles.modelOptionIcon}>{m.icon}</Text>
                 <View style={styles.modelOptionInfo}>
