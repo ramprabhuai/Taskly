@@ -285,6 +285,8 @@ async def update_onboarding(data: OnboardingUpdate, user: dict = Depends(get_cur
 
 @api_router.post("/tasks")
 async def create_task(task: TaskCreate, user: dict = Depends(get_current_user)):
+    from persona_system import classify_task_persona, get_persona
+    
     task_id = f"task_{uuid.uuid4().hex[:12]}"
     subtasks = []
     for i, st in enumerate(task.subtasks):
@@ -294,6 +296,11 @@ async def create_task(task: TaskCreate, user: dict = Depends(get_current_user)):
             "completed": st.get("completed", False),
             "estimated_time": st.get("estimated_time", 15)
         })
+    
+    # Auto-detect persona based on task title and description
+    persona_id = classify_task_persona(task.title, task.description)
+    persona = get_persona(persona_id)
+    
     task_doc = {
         "task_id": task_id,
         "user_id": user["user_id"],
@@ -309,9 +316,14 @@ async def create_task(task: TaskCreate, user: dict = Depends(get_current_user)):
         "completed": False,
         "completed_at": None,
         "xp_earned": 0,
+        "persona_id": persona_id,
+        "persona_name": persona["name"],
+        "persona_emoji": persona["emoji"],
+        "persona_color": persona["color"],
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.tasks.insert_one(task_doc)
+    logger.info(f"Task created with persona: {persona_id} ({persona['name']})")
     return {k: v for k, v in task_doc.items() if k != "_id"}
 
 @api_router.get("/tasks")
