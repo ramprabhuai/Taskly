@@ -130,12 +130,22 @@ export default function TaskDetailScreen() {
   const priorityInfo = PRIORITIES[task.priority as keyof typeof PRIORITIES];
   const completedSubtasks = (task.subtasks || []).filter((s: any) => s.completed).length;
   const totalSubtasks = (task.subtasks || []).length;
+  const persona = getTaskPersona();
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: isDark ? COLORS.dark.background : COLORS.light.background }]} testID="task-detail-screen">
       <ConfettiEffect visible={showConfetti} onComplete={() => setShowConfetti(false)} />
       {showXP && <View style={styles.xpContainer}><XPPopup visible={showXP} xp={earnedXP} onComplete={() => setShowXP(false)} /></View>}
       <BadgeUnlockPopup visible={showBadgePopup} badge={unlockedBadge} onDismiss={() => { setShowBadgePopup(false); setUnlockedBadge(null); }} />
+      
+      {/* Persona Chat Modal */}
+      <PersonaChat
+        visible={showPersonaChat}
+        persona={persona}
+        taskTitle={task.title}
+        taskId={task.task_id}
+        onClose={() => setShowPersonaChat(false)}
+      />
 
       <View style={styles.header}>
         <TouchableOpacity testID="back-btn" onPress={() => router.back()} style={styles.backBtn}>
@@ -151,6 +161,29 @@ export default function TaskDetailScreen() {
           <Text style={styles.emoji}>{task.emoji || '📝'}</Text>
           <Text style={[styles.title, task.completed && styles.titleDone, { color: isDark ? COLORS.dark.text : COLORS.light.text }]}>{task.title}</Text>
         </View>
+
+        {/* AI Persona Card */}
+        {!task.completed && (
+          <TouchableOpacity
+            testID="persona-card"
+            style={[styles.personaCard, { backgroundColor: persona.color + '10', borderColor: persona.color + '40' }]}
+            onPress={() => setShowPersonaChat(true)}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.personaAvatar, { backgroundColor: persona.color + '20' }]}>
+              <Text style={styles.personaEmoji}>{persona.emoji}</Text>
+            </View>
+            <View style={styles.personaInfo}>
+              <Text style={[styles.personaName, { color: persona.color }]}>{persona.name}</Text>
+              <Text style={[styles.personaDesc, { color: isDark ? COLORS.dark.textSecondary : COLORS.light.textSecondary }]}>
+                {persona.description}
+              </Text>
+            </View>
+            <View style={[styles.askBtn, { backgroundColor: persona.color }]}>
+              <Text style={styles.askBtnText}>Ask 💬</Text>
+            </View>
+          </TouchableOpacity>
+        )}
 
         <View style={styles.metaRow}>
           <View style={[styles.metaChip, { backgroundColor: (priorityInfo?.color || '#999') + '15' }]}>
