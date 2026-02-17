@@ -94,7 +94,7 @@ export const PERSONAS: Record<string, Persona> = {
     colorLight: '#CCFBF1',
     description: 'Mental health, habits & self-care',
     tone: 'Calm, empathetic, non-judgmental. Focuses on progress over perfection.',
-    keywords: ['meditate', 'sleep', 'relax', 'mindful', 'therapy', 'habit', 'self-care', 'stress', 'anxiety', 'journal', 'breathe', 'mental', 'wellness', 'gratitude', 'morning routine', 'break'],
+    keywords: ['meditate', 'meditation', 'sleep', 'relax', 'mindful', 'therapy', 'habit', 'self-care', 'stress', 'anxiety', 'journal', 'breathe', 'mental', 'wellness', 'gratitude', 'morning routine', 'break', 'rest', 'calm', 'routine'],
     tipPrefix: 'Wellness reminder',
     actions: [{ label: 'Log mood', icon: '🌈' }, { label: 'Ask coach', icon: '💬' }, { label: 'Breathe', icon: '🫧' }],
   },
