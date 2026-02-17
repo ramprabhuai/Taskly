@@ -1,19 +1,25 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Animated } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/context/AuthContext';
 import { useTheme } from '../../src/context/ThemeContext';
 import { api } from '../../src/utils/api';
 import { COLORS, SPACING, RADIUS, SHADOWS, PRIORITIES, MASCOTS } from '../../src/utils/constants';
+import { ConfettiEffect, XPPopup, BadgeUnlockPopup } from '../../src/components/Animations';
 
 export default function DashboardScreen() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { colors, isDark, toggleTheme } = useTheme();
   const router = useRouter();
   const [dashboard, setDashboard] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [showXP, setShowXP] = useState(false);
+  const [earnedXP, setEarnedXP] = useState(0);
+  const [showBadgePopup, setShowBadgePopup] = useState(false);
+  const [unlockedBadge, setUnlockedBadge] = useState<any>(null);
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -29,7 +35,46 @@ export default function DashboardScreen() {
 
   useEffect(() => { loadDashboard(); }, [loadDashboard]);
 
+  // Reload on focus
+  useFocusEffect(
+    useCallback(() => {
+      loadDashboard();
+    }, [loadDashboard])
+  );
+
   const onRefresh = () => { setRefreshing(true); loadDashboard(); };
+
+  const handleComplete = async (taskId: string) => {
+    try {
+      const result = await api.updateTask(taskId, { completed: true });
+      const xp = result.xp_earned || 10;
+      setEarnedXP(xp);
+
+      // Bug 4: Confetti + XP animation
+      setShowConfetti(true);
+      setShowXP(true);
+
+      // Check for new badges
+      const stats = await api.getGamificationStats();
+      const userBadges = stats.badges || [];
+      if (userBadges.length > 0) {
+        const latest = userBadges[userBadges.length - 1];
+        // Show badge popup if earned recently (within last 10 seconds)
+        const earnedAt = new Date(latest.earned_at).getTime();
+        if (Date.now() - earnedAt < 10000) {
+          setTimeout(() => {
+            setUnlockedBadge(latest);
+            setShowBadgePopup(true);
+          }, 2000);
+        }
+      }
+
+      await refreshUser();
+      loadDashboard();
+    } catch (e) {
+      console.log('Complete error:', e);
+    }
+  };
 
   if (loading) {
     return (
@@ -40,11 +85,21 @@ export default function DashboardScreen() {
   }
 
   const mascotEmoji = MASCOTS[dashboard?.mascot as keyof typeof MASCOTS]?.emoji || '🦉';
-  const xpForLevel = (dashboard?.level || 1) * 100;
   const xpProgress = ((dashboard?.xp || 0) % 100) / 100;
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: isDark ? COLORS.dark.background : COLORS.light.background }]} testID="dashboard-screen">
+      {/* Bug 4: Confetti overlay */}
+      <ConfettiEffect visible={showConfetti} onComplete={() => setShowConfetti(false)} />
+      {showXP && <View style={styles.xpPopupContainer}><XPPopup visible={showXP} xp={earnedXP} onComplete={() => setShowXP(false)} /></View>}
+
+      {/* Bug 6: Badge Unlock Popup */}
+      <BadgeUnlockPopup
+        visible={showBadgePopup}
+        badge={unlockedBadge}
+        onDismiss={() => { setShowBadgePopup(false); setUnlockedBadge(null); }}
+      />
+
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
@@ -61,16 +116,16 @@ export default function DashboardScreen() {
             </Text>
           </View>
           <View style={styles.headerRight}>
-            <TouchableOpacity testID="dark-mode-toggle" onPress={toggleTheme} style={styles.iconBtn}>
+            <TouchableOpacity testID="dark-mode-toggle" onPress={toggleTheme} style={[styles.iconBtn, { backgroundColor: isDark ? COLORS.dark.surface : 'rgba(108,58,255,0.1)' }]}>
               <Text style={styles.iconEmoji}>{isDark ? '☀️' : '🌙'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity testID="notifications-btn" onPress={() => router.push('/notifications')} style={styles.iconBtn}>
+            <TouchableOpacity testID="notifications-btn" onPress={() => router.push('/notifications')} style={[styles.iconBtn, { backgroundColor: isDark ? COLORS.dark.surface : 'rgba(108,58,255,0.1)' }]}>
               <Text style={styles.iconEmoji}>🔔</Text>
               {(dashboard?.unread_notifications || 0) > 0 && (
                 <View style={styles.badge}><Text style={styles.badgeText}>{dashboard.unread_notifications}</Text></View>
               )}
             </TouchableOpacity>
-            <TouchableOpacity testID="settings-btn" onPress={() => router.push('/settings')} style={styles.iconBtn}>
+            <TouchableOpacity testID="settings-btn" onPress={() => router.push('/settings')} style={[styles.iconBtn, { backgroundColor: isDark ? COLORS.dark.surface : 'rgba(108,58,255,0.1)' }]}>
               <Text style={styles.iconEmoji}>⚙️</Text>
             </TouchableOpacity>
           </View>
@@ -81,15 +136,15 @@ export default function DashboardScreen() {
           <View style={styles.xpRow}>
             <View style={styles.streakBadge}>
               <Text style={styles.streakEmoji}>🔥</Text>
-              <Text style={[styles.streakNum, { color: isDark ? COLORS.dark.text : COLORS.light.text }]}>{dashboard?.streak || 0}</Text>
+              <Text testID="streak-count" style={[styles.streakNum, { color: isDark ? COLORS.dark.text : COLORS.light.text }]}>{dashboard?.streak || 0}</Text>
               <Text style={[styles.streakLabel, { color: isDark ? COLORS.dark.textSecondary : COLORS.light.textSecondary }]}>Day Streak</Text>
             </View>
             <View style={styles.xpInfo}>
               <View style={styles.xpLevelRow}>
                 <Text style={[styles.xpText, { color: isDark ? COLORS.dark.text : COLORS.light.text }]}>Level {dashboard?.level || 1}</Text>
-                <Text style={[styles.xpAmount, { color: COLORS.primary }]}>{dashboard?.xp || 0} XP</Text>
+                <Text testID="xp-count" style={[styles.xpAmount, { color: COLORS.primary }]}>{dashboard?.xp || 0} XP</Text>
               </View>
-              <View style={styles.xpBarBg}>
+              <View style={[styles.xpBarBg, { backgroundColor: isDark ? COLORS.dark.border : 'rgba(108,58,255,0.15)' }]}>
                 <View style={[styles.xpBarFill, { width: `${Math.min(xpProgress * 100, 100)}%` }]} />
               </View>
               <Text style={[styles.xpToNext, { color: isDark ? COLORS.dark.textTertiary : COLORS.light.textTertiary }]}>
@@ -146,17 +201,20 @@ export default function DashboardScreen() {
                           {PRIORITIES[task.priority as keyof typeof PRIORITIES]?.emoji} {task.priority}
                         </Text>
                       </View>
-                      {task.due_date && <Text style={[styles.dueText, { color: isDark ? COLORS.dark.textTertiary : COLORS.light.textTertiary }]}>📅 {new Date(task.due_date).toLocaleDateString()}</Text>}
+                      {task.subtasks?.length > 0 && (
+                        <Text style={[styles.subtaskMeta, { color: isDark ? COLORS.dark.textTertiary : COLORS.light.textTertiary }]}>
+                          ✅ {task.subtasks.filter((s: any) => s.completed).length}/{task.subtasks.length}
+                        </Text>
+                      )}
                     </View>
                   </View>
                 </View>
                 <TouchableOpacity
                   testID={`complete-task-${task.task_id}`}
                   style={styles.completeBtn}
-                  onPress={async (e) => {
+                  onPress={(e) => {
                     e.stopPropagation();
-                    await api.updateTask(task.task_id, { completed: true });
-                    loadDashboard();
+                    handleComplete(task.task_id);
                   }}
                 >
                   <Text style={styles.completeBtnText}>✓</Text>
@@ -199,12 +257,13 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   scroll: { padding: SPACING.md },
+  xpPopupContainer: { position: 'absolute', top: '40%', left: 0, right: 0, alignItems: 'center', zIndex: 1001 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.md },
   headerLeft: {},
   greeting: { fontSize: 14, fontWeight: '600' },
   name: { fontSize: 26, fontWeight: '900' },
   headerRight: { flexDirection: 'row', gap: 8 },
-  iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(108,58,255,0.1)', alignItems: 'center', justifyContent: 'center' },
+  iconBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   iconEmoji: { fontSize: 18 },
   badge: { position: 'absolute', top: -2, right: -2, backgroundColor: COLORS.accent, borderRadius: 10, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   badgeText: { color: '#FFF', fontSize: 10, fontWeight: '800' },
@@ -218,7 +277,7 @@ const styles = StyleSheet.create({
   xpLevelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   xpText: { fontSize: 15, fontWeight: '700' },
   xpAmount: { fontSize: 15, fontWeight: '800' },
-  xpBarBg: { height: 10, backgroundColor: 'rgba(108,58,255,0.15)', borderRadius: 5 },
+  xpBarBg: { height: 10, borderRadius: 5 },
   xpBarFill: { height: 10, backgroundColor: COLORS.primary, borderRadius: 5 },
   xpToNext: { fontSize: 11, marginTop: 4 },
   statsRow: { flexDirection: 'row', gap: 10, marginTop: SPACING.md },
@@ -238,7 +297,7 @@ const styles = StyleSheet.create({
   taskMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
   priorityBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 },
   priorityText: { fontSize: 11, fontWeight: '700', textTransform: 'capitalize' },
-  dueText: { fontSize: 11 },
+  subtaskMeta: { fontSize: 11 },
   completeBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: COLORS.success, alignItems: 'center', justifyContent: 'center' },
   completeBtnText: { color: COLORS.success, fontSize: 18, fontWeight: '800' },
   quoteCard: { borderRadius: RADIUS.lg, padding: SPACING.md, flexDirection: 'row', alignItems: 'center', marginTop: SPACING.md },
