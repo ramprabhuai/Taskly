@@ -747,6 +747,58 @@ async def get_quote():
     ]
     return random.choice(quotes)
 
+# ─── Developer Tools Routes ───
+
+@api_router.post("/dev/simulate-day")
+async def dev_simulate_day(user: dict = Depends(get_current_user)):
+    """Simulate advancing one day for streak testing"""
+    current_streak = user.get("streak", 0)
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    await db.users.update_one(
+        {"user_id": user["user_id"]},
+        {"$set": {"streak": current_streak + 1, "streak_last_date": today}}
+    )
+    await check_badges(user["user_id"])
+    return {"message": f"Streak advanced to {current_streak + 1}", "streak": current_streak + 1}
+
+@api_router.post("/dev/reset-streak")
+async def dev_reset_streak(user: dict = Depends(get_current_user)):
+    """Reset streak to 0"""
+    await db.users.update_one(
+        {"user_id": user["user_id"]},
+        {"$set": {"streak": 0, "streak_last_date": ""}}
+    )
+    return {"message": "Streak reset to 0", "streak": 0}
+
+@api_router.post("/dev/add-xp")
+async def dev_add_xp(request: Request, user: dict = Depends(get_current_user)):
+    """Add XP for testing"""
+    body = await request.json()
+    xp_to_add = body.get("xp", 50)
+    new_xp = user.get("xp", 0) + xp_to_add
+    new_level = max(1, new_xp // 100 + 1)
+    await db.users.update_one(
+        {"user_id": user["user_id"]},
+        {"$set": {"xp": new_xp, "level": new_level}}
+    )
+    await check_badges(user["user_id"])
+    return {"message": f"Added {xp_to_add} XP", "xp": new_xp, "level": new_level}
+
+@api_router.post("/dev/trigger-badge")
+async def dev_trigger_badge(request: Request, user: dict = Depends(get_current_user)):
+    """Manually trigger a badge unlock"""
+    body = await request.json()
+    badge_type = body.get("badge_type")
+    badge_def = next((b for b in BADGE_DEFINITIONS if b["badge_type"] == badge_type), None)
+    if not badge_def:
+        raise HTTPException(status_code=400, detail="Invalid badge type")
+    existing_badges = set(b.get("badge_type") for b in user.get("badges", []))
+    if badge_type not in existing_badges:
+        badge = {**badge_def, "earned_at": datetime.now(timezone.utc).isoformat()}
+        await db.users.update_one({"user_id": user["user_id"]}, {"$push": {"badges": badge}})
+        await create_notification(user["user_id"], "badge", f"Badge Unlocked: {badge_def['name']}!", f"{badge_def['icon']} {badge_def['description']}", user.get("mascot", "owl"))
+    return {"message": f"Badge '{badge_def['name']}' triggered", "badge": badge_def}
+
 # ─── Root ───
 @api_router.get("/")
 async def root():
