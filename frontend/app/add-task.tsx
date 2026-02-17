@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../src/context/ThemeContext';
 import { api } from '../src/utils/api';
 import { COLORS, SPACING, RADIUS, SHADOWS, PRIORITIES, CATEGORIES } from '../src/utils/constants';
+import { detectPersona, PERSONAS } from '../src/utils/personas';
 
 export default function AddTaskScreen() {
   const { isDark } = useTheme();
