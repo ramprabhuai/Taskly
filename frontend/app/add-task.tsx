@@ -379,6 +379,13 @@ const styles = StyleSheet.create({
   subtaskTitle: { flex: 1, fontSize: 14, fontWeight: '600' },
   subtaskTime: { fontSize: 12 },
   subtaskDelete: { fontSize: 16, color: COLORS.accent, paddingHorizontal: 4 },
+  // Persona Preview
+  personaPreview: { flexDirection: 'row', alignItems: 'center', padding: SPACING.sm, borderRadius: RADIUS.md, marginBottom: SPACING.sm, borderWidth: 1, gap: 10 },
+  personaIconSmall: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  personaEmojiSmall: { fontSize: 18 },
+  personaPreviewText: { flex: 1 },
+  personaPreviewLabel: { fontSize: 11, fontWeight: '600' },
+  personaPreviewName: { fontSize: 14, fontWeight: '800' },
   footer: { padding: SPACING.md, paddingBottom: SPACING.lg },
   saveBtn: { backgroundColor: COLORS.primary, borderRadius: RADIUS.lg, padding: SPACING.md + 2, alignItems: 'center', ...SHADOWS.md },
   saveBtnDisabled: { opacity: 0.5 },
