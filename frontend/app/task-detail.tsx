@@ -6,6 +6,8 @@ import { useTheme } from '../src/context/ThemeContext';
 import { api } from '../src/utils/api';
 import { COLORS, SPACING, RADIUS, SHADOWS, PRIORITIES } from '../src/utils/constants';
 import { ConfettiEffect, XPPopup, BadgeUnlockPopup } from '../src/components/Animations';
+import { PersonaChat } from '../src/components/PersonaChat';
+import { PERSONAS, Persona } from '../src/utils/personas';
 
 export default function TaskDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
