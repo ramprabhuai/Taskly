@@ -542,7 +542,16 @@ async def unread_count(user: dict = Depends(get_current_user)):
 
 @api_router.post("/ai/suggest")
 async def ai_suggest_task(data: AISuggestRequest, user: dict = Depends(get_current_user)):
-    """AI auto-suggests priority, emoji, estimated time for a task title"""
+    """AI auto-suggests with caching"""
+    import hashlib
+    title_hash = hashlib.md5(data.title.lower().strip().encode()).hexdigest()
+
+    # Check cache first
+    cached = await db.ai_cache.find_one({"title_hash": title_hash}, {"_id": 0})
+    if cached:
+        logger.info(f"AI SUGGEST: Cache hit for '{data.title}'")
+        return cached.get("result", {})
+
     from emergentintegrations.llm.chat import LlmChat, UserMessage
     chat = LlmChat(
         api_key=EMERGENT_LLM_KEY,
@@ -560,13 +569,22 @@ Respond in EXACTLY this JSON format, nothing else:
     chat.with_model("anthropic", "claude-sonnet-4-5-20250929")
     msg = UserMessage(text=f"Task: {data.title}")
     try:
-        response = await chat.send_message(msg)
+        response = await asyncio.wait_for(chat.send_message(msg), timeout=8.0)
         import json
         cleaned = response.strip()
         if "```" in cleaned:
             cleaned = cleaned.split("```")[1].replace("json", "").strip()
         result = json.loads(cleaned)
+        # Cache the result
+        await db.ai_cache.update_one(
+            {"title_hash": title_hash},
+            {"$set": {"title_hash": title_hash, "result": result, "created_at": datetime.now(timezone.utc)}},
+            upsert=True
+        )
         return result
+    except asyncio.TimeoutError:
+        logger.warning(f"AI SUGGEST: Timeout for '{data.title}'")
+        return {"emoji": "📝", "priority": "medium", "estimated_time": 30, "category": "general", "tags": [], "timeout": True}
     except Exception as e:
         logger.error(f"AI suggest error: {e}")
         return {"emoji": "📝", "priority": "medium", "estimated_time": 30, "category": "general", "tags": []}
