@@ -84,7 +84,7 @@ Help overcome creative blocks. Suggest prompts and techniques. Keep responses in
         "color": "#14B8A6",
         "description": "Mental health, habits & self-care",
         "tone": "Calm, empathetic, non-judgmental. Focuses on progress over perfection.",
-        "keywords": ["meditate", "sleep", "relax", "mindful", "therapy", "habit", "self-care", "stress", "anxiety", "journal", "breathe", "mental", "wellness", "gratitude", "morning routine", "break", "rest"],
+        "keywords": ["meditate", "meditation", "sleep", "relax", "mindful", "therapy", "habit", "self-care", "stress", "anxiety", "journal", "breathe", "mental", "wellness", "gratitude", "morning routine", "break", "rest", "calm", "routine"],
         "system_prompt": """You are a Wellness Coach - calm, empathetic, and non-judgmental. Help users with mental health, habits, and self-care.
 Style: Be gentle and supportive. Focus on progress over perfection. Use calming language.
 Suggest small, manageable steps. Encourage self-compassion. Keep responses warm and understanding."""
