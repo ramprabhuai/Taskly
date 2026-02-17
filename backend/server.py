@@ -99,6 +99,12 @@ class ChatMessage(BaseModel):
 class AISuggestRequest(BaseModel):
     title: str
 
+class PersonaChatRequest(BaseModel):
+    message: str
+    task_id: str
+    persona_id: str
+    session_id: Optional[str] = None
+
 # ─── Auth Helpers ───
 
 def hash_password(password: str) -> str:
