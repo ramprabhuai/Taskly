@@ -825,3 +825,20 @@ app.add_middleware(
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+
+@app.on_event("startup")
+async def create_indexes():
+    """Create MongoDB indexes for performance"""
+    try:
+        await db.users.create_index("user_id", unique=True)
+        await db.users.create_index("email")
+        await db.tasks.create_index([("user_id", 1), ("completed", 1)])
+        await db.tasks.create_index([("user_id", 1), ("created_at", -1)])
+        await db.tasks.create_index([("user_id", 1), ("completed_at", -1)])
+        await db.chat_messages.create_index([("user_id", 1), ("session_id", 1)])
+        await db.notifications.create_index([("user_id", 1), ("created_at", -1)])
+        await db.ai_cache.create_index("title_hash", unique=True)
+        await db.ai_cache.create_index("created_at", expireAfterSeconds=3600)
+        logger.info("MongoDB indexes created successfully")
+    except Exception as e:
+        logger.warning(f"Index creation warning: {e}")
