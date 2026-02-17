@@ -55,20 +55,25 @@ export default function AIAssistantScreen() {
     setInput('');
     setMessages(prev => [...prev, { role: 'user', content: msgText }]);
     setLoading(true);
+    console.log('Sending to model:', aiModel);
 
     const timeout = setTimeout(() => {
       setLoading(false);
-      setMessages(prev => [...prev, { role: 'assistant', content: "I'm taking a bit longer than expected. Please try again! 🤖", model: aiModel }]);
-    }, 15000);
+      setMessages(prev => [...prev, { role: 'assistant', content: "AI is taking too long. Try again? 🤖", model: aiModel }]);
+    }, 10000);
 
     try {
       const resp = await api.aiChat(msgText, aiModel, sessionId || undefined);
       clearTimeout(timeout);
+      console.log('Response from model:', resp.ai_model, '- length:', resp.response?.length);
       setSessionId(resp.session_id);
       setMessages(prev => [...prev, { role: 'assistant', content: resp.response, model: resp.ai_model }]);
-    } catch {
+    } catch (e: any) {
       clearTimeout(timeout);
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Oops! Something went wrong. Please try again. 🤖', model: aiModel }]);
+      const errorMsg = e?.message?.includes('fetch') || e?.message?.includes('network')
+        ? "You seem to be offline. Check your connection and try again! 📡"
+        : "Oops! Something went wrong. Please try again. 🤖";
+      setMessages(prev => [...prev, { role: 'assistant', content: errorMsg, model: aiModel }]);
     } finally {
       setLoading(false);
     }
