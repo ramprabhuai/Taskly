@@ -7,7 +7,7 @@ import requests
 import os
 import time
 
-BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL').rstrip('/')
+BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://duolingo-tasks.preview.emergentagent.com').rstrip('/')
 
 @pytest.fixture
 def api_client():
