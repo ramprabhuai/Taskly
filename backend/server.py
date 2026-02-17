@@ -596,22 +596,9 @@ Respond in EXACTLY this JSON format, nothing else:
 
 @api_router.post("/ai/chat")
 async def ai_chat(data: ChatMessage, user: dict = Depends(get_current_user)):
-    """AI chat with model switcher"""
+    """AI chat with model switcher - OPTIMIZED: no history replay"""
     from emergentintegrations.llm.chat import LlmChat, UserMessage
     session_id = data.session_id or f"chat_{user['user_id']}_{uuid.uuid4().hex[:8]}"
-    # Get user's tasks for context
-    tasks = await db.tasks.find({"user_id": user["user_id"], "completed": False}, {"_id": 0}).to_list(20)
-    task_context = ""
-    if tasks:
-        task_list = "\n".join([f"- {t['title']} (Priority: {t['priority']}, Due: {t.get('due_date', 'No date')})" for t in tasks[:10]])
-        task_context = f"\n\nUser's current tasks:\n{task_list}"
-
-    system_msg = f"""You are Taskly AI, a friendly and encouraging task management assistant. You help users plan, organize, and complete their tasks. You're encouraging, never shaming, and great with people of all ages including school kids.
-
-User's name: {user.get('name', 'Friend')}
-User's XP: {user.get('xp', 0)} | Streak: {user.get('streak', 0)} days | Level: {user.get('level', 1)}{task_context}
-
-Be concise, helpful, and encouraging. Use emojis occasionally. If the user asks about a task, help them break it down or give advice."""
 
     model_map = {
         "claude": ("anthropic", "claude-sonnet-4-5-20250929"),
@@ -619,6 +606,32 @@ Be concise, helpful, and encouraging. Use emojis occasionally. If the user asks 
         "gemini": ("gemini", "gemini-2.5-flash"),
     }
     provider, model = model_map.get(data.ai_model, ("anthropic", "claude-sonnet-4-5-20250929"))
+    logger.info(f"AI CHAT: Using model={data.ai_model} → provider={provider}, model={model}")
+
+    # Get user's tasks for context (limit to 5 for speed)
+    tasks = await db.tasks.find({"user_id": user["user_id"], "completed": False}, {"_id": 0}).to_list(5)
+    task_context = ""
+    if tasks:
+        task_list = "\n".join([f"- {t['title']} ({t['priority']})" for t in tasks[:5]])
+        task_context = f"\n\nUser's pending tasks:\n{task_list}"
+
+    # Build conversation history as context in system message (NO API replay)
+    history = await db.chat_messages.find(
+        {"user_id": user["user_id"], "session_id": session_id},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(10)
+    history.reverse()
+
+    history_text = ""
+    if history:
+        recent = history[-6:]  # Last 3 exchanges max
+        history_text = "\n\nRecent conversation:\n" + "\n".join(
+            [f"{'User' if h['role'] == 'user' else 'AI'}: {h['content'][:200]}" for h in recent]
+        )
+
+    system_msg = f"""You are Taskly AI, a friendly task management assistant. Be concise, helpful, encouraging. Use emojis occasionally.
+
+User: {user.get('name', 'Friend')} | Level {user.get('level', 1)} | {user.get('xp', 0)} XP | {user.get('streak', 0)}-day streak{task_context}{history_text}"""
 
     # Store user message
     user_msg_doc = {
@@ -632,32 +645,24 @@ Be concise, helpful, and encouraging. Use emojis occasionally. If the user asks 
     }
     await db.chat_messages.insert_one(user_msg_doc)
 
-    # Get chat history for context
-    history = await db.chat_messages.find(
-        {"user_id": user["user_id"], "session_id": session_id},
-        {"_id": 0}
-    ).sort("created_at", -1).to_list(20)
-    history.reverse()
-
-    # Build conversation for LLM
+    # Single API call - no history replay
     chat = LlmChat(
         api_key=EMERGENT_LLM_KEY,
-        session_id=f"taskly_{session_id}_{uuid.uuid4().hex[:4]}",
+        session_id=f"taskly_{session_id}_{data.ai_model}",
         system_message=system_msg
     )
     chat.with_model(provider, model)
 
-    # Send previous messages for context
-    for h in history[:-1]:  # Exclude the latest (just stored)
-        if h["role"] == "user":
-            await chat.send_message(UserMessage(text=h["content"]))
-
     msg = UserMessage(text=data.message)
     try:
-        response = await chat.send_message(msg)
+        response = await asyncio.wait_for(chat.send_message(msg), timeout=12.0)
+        logger.info(f"AI CHAT: Got response from {data.ai_model} ({len(response)} chars)")
+    except asyncio.TimeoutError:
+        logger.warning(f"AI CHAT: Timeout for model {data.ai_model}")
+        response = f"I'm taking too long to respond. Please try again! The {AI_MODELS_DISPLAY.get(data.ai_model, 'AI')} might be busy. 🤖"
     except Exception as e:
-        logger.error(f"AI chat error: {e}")
-        response = "I'm having trouble connecting right now. Please try again in a moment! 🤖"
+        logger.error(f"AI CHAT error ({data.ai_model}): {e}")
+        response = "I'm having trouble connecting right now. Please try again! 🤖"
 
     # Store AI response
     ai_msg_doc = {
