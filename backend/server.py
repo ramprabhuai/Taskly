@@ -422,6 +422,8 @@ BADGE_DEFINITIONS = [
     {"badge_type": "xp_100", "name": "Century Club", "description": "Earn 100 XP", "icon": "💯"},
     {"badge_type": "streak_3", "name": "On Fire", "description": "3-day streak", "icon": "🔥"},
     {"badge_type": "task_10", "name": "Task Master", "description": "Complete 10 tasks", "icon": "⚡"},
+    {"badge_type": "speed_runner", "name": "Speed Runner", "description": "Finish task faster than estimate", "icon": "🏃"},
+    {"badge_type": "zero_inbox", "name": "Zero Inbox", "description": "Clear all tasks in a day", "icon": "🏆"},
 ]
 
 async def check_badges(user_id: str):
