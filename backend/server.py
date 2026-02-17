@@ -25,6 +25,8 @@ db = client[os.environ['DB_NAME']]
 JWT_SECRET = os.environ.get('JWT_SECRET', 'taskly_default_secret')
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY', '')
 
+AI_MODELS_DISPLAY = {"claude": "Claude", "gpt4o": "GPT-4o", "gemini": "Gemini"}
+
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
