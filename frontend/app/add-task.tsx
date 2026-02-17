@@ -15,29 +15,65 @@ export default function AddTaskScreen() {
   const [priority, setPriority] = useState('medium');
   const [category, setCategory] = useState('general');
   const [estimatedTime, setEstimatedTime] = useState(30);
+  const [tags, setTags] = useState<string[]>([]);
   const [subtasks, setSubtasks] = useState<{ title: string; estimated_time: number }[]>([]);
   const [loading, setLoading] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState<any>(null);
+  const [aiTimeout, setAiTimeout] = useState(false);
   const [breakdownLoading, setBreakdownLoading] = useState(false);
-  const suggestTimeout = useRef<NodeJS.Timeout | null>(null);
+  const suggestTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const aiTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // AI auto-suggest when title changes (with 1s debounce)
+  // Bug 3 fix: AI auto-suggest with 1s debounce and visible card
   useEffect(() => {
     if (suggestTimeout.current) clearTimeout(suggestTimeout.current);
-    if (title.trim().length < 3) return;
+    if (aiTimer.current) clearTimeout(aiTimer.current);
+    setAiSuggestion(null);
+    setAiTimeout(false);
+
+    if (title.trim().length < 3) {
+      setAiLoading(false);
+      return;
+    }
+
     suggestTimeout.current = setTimeout(async () => {
       setAiLoading(true);
+      setAiTimeout(false);
+
+      // 4-second timeout
+      aiTimer.current = setTimeout(() => {
+        setAiLoading(false);
+        setAiTimeout(true);
+      }, 4000);
+
       try {
         const suggestion = await api.aiSuggest(title);
-        if (suggestion.emoji) setEmoji(suggestion.emoji);
-        if (suggestion.priority) setPriority(suggestion.priority);
-        if (suggestion.estimated_time) setEstimatedTime(suggestion.estimated_time);
-        if (suggestion.category) setCategory(suggestion.category);
-      } catch {}
-      setAiLoading(false);
+        if (aiTimer.current) clearTimeout(aiTimer.current);
+        setAiSuggestion(suggestion);
+        setAiLoading(false);
+      } catch {
+        if (aiTimer.current) clearTimeout(aiTimer.current);
+        setAiLoading(false);
+        setAiTimeout(true);
+      }
     }, 1000);
-    return () => { if (suggestTimeout.current) clearTimeout(suggestTimeout.current); };
+
+    return () => {
+      if (suggestTimeout.current) clearTimeout(suggestTimeout.current);
+      if (aiTimer.current) clearTimeout(aiTimer.current);
+    };
   }, [title]);
+
+  const applySuggestion = () => {
+    if (!aiSuggestion) return;
+    if (aiSuggestion.emoji) setEmoji(aiSuggestion.emoji);
+    if (aiSuggestion.priority) setPriority(aiSuggestion.priority);
+    if (aiSuggestion.estimated_time) setEstimatedTime(aiSuggestion.estimated_time);
+    if (aiSuggestion.category) setCategory(aiSuggestion.category);
+    if (aiSuggestion.tags) setTags(aiSuggestion.tags);
+    setAiSuggestion(null);
+  };
 
   const handleAIBreakdown = async () => {
     if (!title.trim()) return;
@@ -60,6 +96,7 @@ export default function AddTaskScreen() {
         priority,
         category,
         estimated_time: estimatedTime,
+        tags,
         subtasks: subtasks.map(s => ({ title: s.title, estimated_time: s.estimated_time, completed: false })),
       });
       router.back();
@@ -97,8 +134,54 @@ export default function AddTaskScreen() {
               autoFocus
               multiline
             />
-            {aiLoading && <ActivityIndicator size="small" color={COLORS.primary} />}
           </View>
+
+          {/* AI Suggestion Card - Bug 3 Fix */}
+          {aiLoading && (
+            <View style={[styles.aiSuggestCard, { backgroundColor: COLORS.primary + '08', borderColor: COLORS.primary + '30' }]}>
+              <View style={styles.aiSuggestHeader}>
+                <ActivityIndicator size="small" color={COLORS.primary} />
+                <Text style={[styles.aiSuggestTitle, { color: COLORS.primary }]}>AI is thinking...</Text>
+              </View>
+            </View>
+          )}
+
+          {aiTimeout && (
+            <View style={[styles.aiSuggestCard, { backgroundColor: COLORS.warning + '10', borderColor: COLORS.warning + '30' }]}>
+              <Text style={[styles.aiSuggestTitle, { color: COLORS.warning }]}>⏳ AI took too long. Try again or set manually.</Text>
+            </View>
+          )}
+
+          {aiSuggestion && !aiLoading && (
+            <View style={[styles.aiSuggestCard, { backgroundColor: isDark ? COLORS.dark.surface : COLORS.light.surface, borderColor: COLORS.primary + '40' }]} testID="ai-suggestion-card">
+              <View style={styles.aiSuggestHeader}>
+                <Text style={styles.aiSuggestTitle}>✨ AI Suggests</Text>
+              </View>
+              <View style={styles.aiSuggestRow}>
+                <View style={styles.aiSuggestItem}>
+                  <Text style={styles.aiSuggestLabel}>Emoji</Text>
+                  <Text style={styles.aiSuggestValue}>{aiSuggestion.emoji || '📝'}</Text>
+                </View>
+                <View style={styles.aiSuggestItem}>
+                  <Text style={styles.aiSuggestLabel}>Priority</Text>
+                  <Text style={[styles.aiSuggestValue, { color: PRIORITIES[aiSuggestion.priority as keyof typeof PRIORITIES]?.color }]}>
+                    {PRIORITIES[aiSuggestion.priority as keyof typeof PRIORITIES]?.emoji} {aiSuggestion.priority}
+                  </Text>
+                </View>
+                <View style={styles.aiSuggestItem}>
+                  <Text style={styles.aiSuggestLabel}>Time</Text>
+                  <Text style={styles.aiSuggestValue}>{aiSuggestion.estimated_time}m</Text>
+                </View>
+                <View style={styles.aiSuggestItem}>
+                  <Text style={styles.aiSuggestLabel}>Category</Text>
+                  <Text style={styles.aiSuggestValue}>{aiSuggestion.category}</Text>
+                </View>
+              </View>
+              <TouchableOpacity testID="apply-suggestion-btn" style={styles.applySuggestionBtn} onPress={applySuggestion} activeOpacity={0.7}>
+                <Text style={styles.applySuggestionText}>Apply All ✨</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Description */}
           <TextInput
@@ -170,11 +253,15 @@ export default function AddTaskScreen() {
             activeOpacity={0.7}
           >
             {breakdownLoading ? (
-              <ActivityIndicator size="small" color={COLORS.primary} />
-            ) : (
               <>
                 <Text style={styles.aiBtnEmoji}>🤖</Text>
-                <Text style={[styles.aiBtnText, { color: COLORS.primary }]}>Let AI break this down</Text>
+                <Text style={[styles.aiBtnText, { color: COLORS.primary }]}>AI is thinking...</Text>
+                <ActivityIndicator size="small" color={COLORS.primary} />
+              </>
+            ) : (
+              <>
+                <Text style={styles.aiBtnEmoji}>✨</Text>
+                <Text style={[styles.aiBtnText, { color: COLORS.primary }]}>Break into subtasks</Text>
               </>
             )}
           </TouchableOpacity>
@@ -182,7 +269,9 @@ export default function AddTaskScreen() {
           {/* Subtasks */}
           {subtasks.length > 0 && (
             <View style={styles.subtasksSection}>
-              <Text style={[styles.sectionLabel, { color: isDark ? COLORS.dark.text : COLORS.light.text }]}>Subtasks</Text>
+              <Text style={[styles.sectionLabel, { color: isDark ? COLORS.dark.text : COLORS.light.text }]}>
+                Subtasks ({subtasks.length})
+              </Text>
               {subtasks.map((st, i) => (
                 <View key={i} style={[styles.subtaskItem, { backgroundColor: isDark ? COLORS.dark.surface : COLORS.light.surface }]}>
                   <View style={styles.subtaskCircle} />
@@ -229,9 +318,19 @@ const styles = StyleSheet.create({
   closeText: { fontSize: 22 },
   headerTitle: { fontSize: 18, fontWeight: '800' },
   scroll: { padding: SPACING.md },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: SPACING.md },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: SPACING.sm },
   emojiDisplay: { fontSize: 36 },
   titleInput: { flex: 1, fontSize: 22, fontWeight: '700', paddingVertical: 8 },
+  // AI Suggestion Card styles
+  aiSuggestCard: { borderRadius: RADIUS.lg, padding: SPACING.md, marginBottom: SPACING.md, borderWidth: 1.5 },
+  aiSuggestHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  aiSuggestTitle: { fontSize: 14, fontWeight: '800', color: COLORS.primary },
+  aiSuggestRow: { flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 },
+  aiSuggestItem: { alignItems: 'center', minWidth: 60 },
+  aiSuggestLabel: { fontSize: 10, color: '#999', fontWeight: '600', textTransform: 'uppercase' },
+  aiSuggestValue: { fontSize: 15, fontWeight: '700', marginTop: 2 },
+  applySuggestionBtn: { backgroundColor: COLORS.primary, borderRadius: RADIUS.md, paddingVertical: 10, alignItems: 'center', marginTop: SPACING.sm },
+  applySuggestionText: { color: '#FFF', fontSize: 15, fontWeight: '800' },
   descInput: { borderRadius: RADIUS.lg, padding: SPACING.md, fontSize: 15, minHeight: 60, marginBottom: SPACING.md, textAlignVertical: 'top' },
   sectionLabel: { fontSize: 15, fontWeight: '800', marginBottom: SPACING.sm, marginTop: SPACING.sm },
   priorityRow: { flexDirection: 'row', gap: 10, marginBottom: SPACING.sm },
