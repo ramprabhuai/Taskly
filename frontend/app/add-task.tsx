@@ -137,6 +137,27 @@ export default function AddTaskScreen() {
             />
           </View>
 
+          {/* Persona Detection Preview */}
+          {title.trim().length >= 3 && (() => {
+            const personaId = detectPersona(title);
+            const persona = PERSONAS[personaId];
+            return (
+              <View style={[styles.personaPreview, { backgroundColor: persona.color + '10', borderColor: persona.color + '30' }]} testID="persona-preview">
+                <View style={[styles.personaIconSmall, { backgroundColor: persona.color + '20' }]}>
+                  <Text style={styles.personaEmojiSmall}>{persona.emoji}</Text>
+                </View>
+                <View style={styles.personaPreviewText}>
+                  <Text style={[styles.personaPreviewLabel, { color: isDark ? COLORS.dark.textSecondary : COLORS.light.textSecondary }]}>
+                    Your AI helper will be
+                  </Text>
+                  <Text style={[styles.personaPreviewName, { color: persona.color }]}>
+                    {persona.name}
+                  </Text>
+                </View>
+              </View>
+            );
+          })()}
+
           {/* AI Suggestion Card - Bug 3 Fix */}
           {aiLoading && (
             <View style={[styles.aiSuggestCard, { backgroundColor: COLORS.primary + '08', borderColor: COLORS.primary + '30' }]}>
