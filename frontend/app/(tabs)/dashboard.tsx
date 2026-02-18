@@ -191,16 +191,26 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* Quick Stats */}
+        {/* Quick Stats - Tappable Cards */}
         <View style={styles.statsRow}>
-          <View style={[styles.statCard, { backgroundColor: COLORS.success + '15' }]}>
+          <TouchableOpacity 
+            style={[styles.statCard, { backgroundColor: COLORS.success + '15' }]}
+            onPress={() => router.push({ pathname: '/(tabs)/tasks', params: { filter: 'completed' } })}
+            activeOpacity={0.7}
+            testID="stat-done-today"
+          >
             <Text style={styles.statValue}>{dashboard?.completed_today || 0}</Text>
             <Text style={[styles.statLabel, { color: isDark ? COLORS.dark.textSecondary : COLORS.light.textSecondary }]}>Done Today</Text>
-          </View>
-          <View style={[styles.statCard, { backgroundColor: COLORS.warning + '15' }]}>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.statCard, { backgroundColor: COLORS.warning + '15' }]}
+            onPress={() => router.push({ pathname: '/(tabs)/tasks', params: { filter: 'pending' } })}
+            activeOpacity={0.7}
+            testID="stat-pending"
+          >
             <Text style={styles.statValue}>{dashboard?.total_pending || 0}</Text>
             <Text style={[styles.statLabel, { color: isDark ? COLORS.dark.textSecondary : COLORS.light.textSecondary }]}>Pending</Text>
-          </View>
+          </TouchableOpacity>
           <View style={[styles.statCard, { backgroundColor: COLORS.primary + '15' }]}>
             <Text style={styles.statValue}>⭐</Text>
             <Text style={[styles.statLabel, { color: isDark ? COLORS.dark.textSecondary : COLORS.light.textSecondary }]}>Lvl {dashboard?.level || 1}</Text>
