@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/context/ThemeContext';
 import { api } from '../../src/utils/api';
@@ -17,10 +17,11 @@ const DUE_COLORS = {
 
 // Filter chips for due date filtering
 const FILTERS = [
-  { id: 'all', label: 'All' },
-  { id: 'today', label: 'Today' },
-  { id: 'tomorrow', label: 'Tomorrow' },
-  { id: 'overdue', label: 'Overdue' },
+  { id: 'all', label: 'All', icon: '📋' },
+  { id: 'pending', label: 'Pending', icon: '⏳' },
+  { id: 'completed', label: 'Done', icon: '✅' },
+  { id: 'today', label: 'Today', icon: '📅' },
+  { id: 'overdue', label: 'Overdue', icon: '⚠️' },
 ];
 
 // Helper to get due date status
