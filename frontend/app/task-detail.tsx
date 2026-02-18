@@ -118,7 +118,12 @@ export default function TaskDetailScreen() {
     const existingTitles = new Set(currentSubtasks.map((s: any) => s.title.toLowerCase().trim()));
     const uniqueNewSubtasks = aiSubtasks
       .filter(s => !existingTitles.has(s.title.toLowerCase().trim()))
-      .map(s => ({ title: s.title, estimated_time: s.estimated_time, completed: false }));
+      .map((s, index) => ({ 
+        subtask_id: `st_${Date.now()}_${index}`,  // Generate unique ID
+        title: s.title, 
+        estimated_time: s.estimated_time, 
+        completed: false 
+      }));
     
     if (uniqueNewSubtasks.length > 0) {
       const newSubtasks = [...currentSubtasks, ...uniqueNewSubtasks];
