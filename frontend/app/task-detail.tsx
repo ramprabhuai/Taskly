@@ -248,22 +248,26 @@ export default function TaskDetailScreen() {
             <View style={[styles.subtaskProgress, { backgroundColor: isDark ? COLORS.dark.border : 'rgba(108,58,255,0.15)' }]}>
               <View style={[styles.subtaskProgressFill, { width: `${totalSubtasks > 0 ? (completedSubtasks / totalSubtasks) * 100 : 0}%` }]} />
             </View>
-            {task.subtasks.map((st: any) => (
-              <TouchableOpacity
-                key={st.subtask_id}
-                testID={`subtask-${st.subtask_id}`}
-                style={[styles.subtaskItem, { backgroundColor: isDark ? COLORS.dark.surface : COLORS.light.surface }]}
-                onPress={() => handleToggleSubtask(st.subtask_id)}
-              >
-                <View style={[styles.subtaskCheck, st.completed && styles.subtaskCheckDone]}>
-                  {st.completed && <Text style={styles.subtaskCheckmark}>✓</Text>}
-                </View>
-                <Text style={[styles.subtaskTitle, st.completed && styles.subtaskTitleDone, { color: isDark ? COLORS.dark.text : COLORS.light.text }]}>
-                  {st.title}
-                </Text>
-                <Text style={[styles.subtaskTime, { color: isDark ? COLORS.dark.textTertiary : COLORS.light.textTertiary }]}>{st.estimated_time}m</Text>
-              </TouchableOpacity>
-            ))}
+            {task.subtasks.map((st: any, index: number) => {
+              // Use subtask_id if available, otherwise use index-based ID
+              const subtaskId = st.subtask_id || `index_${index}`;
+              return (
+                <TouchableOpacity
+                  key={subtaskId}
+                  testID={`subtask-${subtaskId}`}
+                  style={[styles.subtaskItem, { backgroundColor: isDark ? COLORS.dark.surface : COLORS.light.surface }]}
+                  onPress={() => handleToggleSubtask(subtaskId)}
+                >
+                  <View style={[styles.subtaskCheck, st.completed && styles.subtaskCheckDone]}>
+                    {st.completed && <Text style={styles.subtaskCheckmark}>✓</Text>}
+                  </View>
+                  <Text style={[styles.subtaskTitle, st.completed && styles.subtaskTitleDone, { color: isDark ? COLORS.dark.text : COLORS.light.text }]}>
+                    {st.title}
+                  </Text>
+                  <Text style={[styles.subtaskTime, { color: isDark ? COLORS.dark.textTertiary : COLORS.light.textTertiary }]}>{st.estimated_time}m</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         )}
 
