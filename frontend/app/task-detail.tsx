@@ -250,8 +250,8 @@ export default function TaskDetailScreen() {
           </View>
         )}
 
-        {/* Bug 7: AI Breakdown Button */}
-        {!task.completed && (
+        {/* Bug 7: AI Breakdown Button - Only show when no subtasks exist */}
+        {!task.completed && totalSubtasks === 0 && (
           <TouchableOpacity
             testID="ai-breakdown-detail-btn"
             style={[styles.breakdownBtn, { backgroundColor: isDark ? COLORS.dark.surface : COLORS.light.surface }]}
