@@ -152,10 +152,12 @@ export default function TasksScreen() {
   };
 
   const getFilterCount = (filterId: string): number => {
-    if (filterId === 'all') return tasks.length;
-    if (filterId === 'today') return tasks.filter(t => getDueDateStatus(t.due_date)?.status === 'today').length;
-    if (filterId === 'tomorrow') return tasks.filter(t => getDueDateStatus(t.due_date)?.status === 'tomorrow').length;
-    if (filterId === 'overdue') return tasks.filter(t => getDueDateStatus(t.due_date)?.status === 'overdue').length;
+    const activeTasks = allTasks.filter(t => !t.completed);
+    if (filterId === 'all') return activeTasks.length;
+    if (filterId === 'pending') return activeTasks.length;
+    if (filterId === 'completed') return allTasks.filter(t => t.completed).length;
+    if (filterId === 'today') return activeTasks.filter(t => getDueDateStatus(t.due_date)?.status === 'today').length;
+    if (filterId === 'overdue') return activeTasks.filter(t => getDueDateStatus(t.due_date)?.status === 'overdue').length;
     return 0;
   };
 
@@ -170,6 +172,7 @@ export default function TasksScreen() {
         {FILTERS.map((f) => {
           const count = getFilterCount(f.id);
           const isOverdue = f.id === 'overdue' && count > 0;
+          const isCompleted = f.id === 'completed';
           return (
             <TouchableOpacity
               key={f.id}
@@ -177,7 +180,8 @@ export default function TasksScreen() {
               style={[
                 styles.filterChip, 
                 filter === f.id && styles.filterChipActive,
-                isOverdue && filter !== f.id && { backgroundColor: DUE_COLORS.overdue + '20' }
+                isOverdue && filter !== f.id && { backgroundColor: DUE_COLORS.overdue + '20' },
+                isCompleted && filter !== f.id && { backgroundColor: COLORS.success + '15' }
               ]}
               onPress={() => setFilter(f.id)}
             >
