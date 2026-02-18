@@ -85,16 +85,27 @@ const sortByDueDate = (tasks: any[]): any[] => {
 export default function TasksScreen() {
   const { colors, isDark } = useTheme();
   const router = useRouter();
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [filter, setFilter] = useState('all');
+  const params = useLocalSearchParams<{ filter?: string }>();
+  const [allTasks, setAllTasks] = useState<any[]>([]);
+  const [filter, setFilter] = useState(params.filter || 'all');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Update filter when route param changes
+  useEffect(() => {
+    if (params.filter) {
+      setFilter(params.filter);
+    }
+  }, [params.filter]);
+
   const loadTasks = useCallback(async () => {
     try {
-      // Always fetch active (non-completed) tasks
-      const data = await api.getTasks('active');
-      setTasks(data);
+      // Fetch all tasks (both active and completed)
+      const [activeTasks, completedTasks] = await Promise.all([
+        api.getTasks('active'),
+        api.getTasks('completed'),
+      ]);
+      setAllTasks([...activeTasks, ...completedTasks]);
     } catch (e) { console.log('Tasks load error:', e); }
     finally { setLoading(false); setRefreshing(false); }
   }, []);
@@ -103,29 +114,32 @@ export default function TasksScreen() {
 
   // Filter and sort tasks
   const filteredTasks = useMemo(() => {
-    let result = tasks;
+    let result = allTasks;
     
     // Apply filter
-    if (filter === 'today') {
-      result = tasks.filter(t => {
+    if (filter === 'pending') {
+      result = allTasks.filter(t => !t.completed);
+    } else if (filter === 'completed') {
+      result = allTasks.filter(t => t.completed);
+    } else if (filter === 'today') {
+      result = allTasks.filter(t => {
+        if (t.completed) return false;
         const status = getDueDateStatus(t.due_date);
         return status?.status === 'today';
       });
-    } else if (filter === 'tomorrow') {
-      result = tasks.filter(t => {
-        const status = getDueDateStatus(t.due_date);
-        return status?.status === 'tomorrow';
-      });
     } else if (filter === 'overdue') {
-      result = tasks.filter(t => {
+      result = allTasks.filter(t => {
+        if (t.completed) return false;
         const status = getDueDateStatus(t.due_date);
         return status?.status === 'overdue';
       });
+    } else if (filter === 'all') {
+      result = allTasks.filter(t => !t.completed); // Default: show active only
     }
     
     // Sort by due date priority
     return sortByDueDate(result);
-  }, [tasks, filter]);
+  }, [allTasks, filter]);
 
   const handleComplete = async (taskId: string) => {
     await api.updateTask(taskId, { completed: true });
