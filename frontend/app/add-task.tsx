@@ -519,7 +519,7 @@ export default function AddTaskScreen() {
                   <Text style={[styles.customDateText, { color: themeColors.textSecondary }]}>🕐 Pick a time...</Text>
                 </TouchableOpacity>
               )}
-            </View>
+            </TouchableOpacity>
           )}
 
           {/* Description */}
