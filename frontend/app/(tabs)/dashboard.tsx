@@ -207,57 +207,73 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* Today's Focus */}
+        {/* Today's Focus - Only tasks due today or overdue */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: isDark ? COLORS.dark.text : COLORS.light.text }]}>Today's Focus</Text>
-          {(!dashboard?.today_tasks || dashboard.today_tasks.length === 0) ? (
-            <View style={[styles.emptyCard, { backgroundColor: isDark ? COLORS.dark.surface : COLORS.light.surface }]}>
-              <Text style={styles.emptyEmoji}>🎉</Text>
-              <Text style={[styles.emptyText, { color: isDark ? COLORS.dark.textSecondary : COLORS.light.textSecondary }]}>
-                No tasks yet! Tap + to add your first task
-              </Text>
-            </View>
-          ) : (
-            dashboard.today_tasks.map((task: any) => (
-              <TouchableOpacity
-                key={task.task_id}
-                testID={`task-card-${task.task_id}`}
-                style={[styles.taskCard, { backgroundColor: isDark ? COLORS.dark.surface : COLORS.light.surface }, SHADOWS.sm]}
-                onPress={() => router.push({ pathname: '/task-detail', params: { id: task.task_id } })}
-                activeOpacity={0.7}
-              >
-                <View style={styles.taskLeft}>
-                  <Text style={styles.taskEmoji}>{task.emoji || '📝'}</Text>
-                  <View style={styles.taskInfo}>
-                    <Text style={[styles.taskTitle, { color: isDark ? COLORS.dark.text : COLORS.light.text }]} numberOfLines={1}>
-                      {task.title}
-                    </Text>
-                    <View style={styles.taskMeta}>
-                      <View style={[styles.priorityBadge, { backgroundColor: PRIORITIES[task.priority as keyof typeof PRIORITIES]?.color + '20' }]}>
-                        <Text style={[styles.priorityText, { color: PRIORITIES[task.priority as keyof typeof PRIORITIES]?.color }]}>
-                          {PRIORITIES[task.priority as keyof typeof PRIORITIES]?.emoji} {task.priority}
-                        </Text>
+          {(() => {
+            const focusTasks = getTodayFocusTasks(dashboard?.today_tasks || []);
+            if (focusTasks.length === 0) {
+              return (
+                <View style={[styles.emptyCard, { backgroundColor: isDark ? COLORS.dark.surface : COLORS.light.surface }]}>
+                  <Text style={styles.emptyEmoji}>🎉</Text>
+                  <Text style={[styles.emptyText, { color: isDark ? COLORS.dark.textSecondary : COLORS.light.textSecondary }]}>
+                    Nothing due today! Enjoy your day or add a task with a due date.
+                  </Text>
+                </View>
+              );
+            }
+            return focusTasks.map((task: any) => {
+              const dueStatus = getTaskDueStatus(task.due_date);
+              return (
+                <TouchableOpacity
+                  key={task.task_id}
+                  testID={`task-card-${task.task_id}`}
+                  style={[styles.taskCard, { backgroundColor: isDark ? COLORS.dark.surface : COLORS.light.surface }, SHADOWS.sm]}
+                  onPress={() => router.push({ pathname: '/task-detail', params: { id: task.task_id } })}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.taskLeft}>
+                    <Text style={styles.taskEmoji}>{task.emoji || '📝'}</Text>
+                    <View style={styles.taskInfo}>
+                      <Text style={[styles.taskTitle, { color: isDark ? COLORS.dark.text : COLORS.light.text }]} numberOfLines={1}>
+                        {task.title}
+                      </Text>
+                      <View style={styles.taskMeta}>
+                        {/* Due Date Badge */}
+                        {dueStatus && (
+                          <View style={[styles.dueBadge, { backgroundColor: DUE_COLORS[dueStatus] + '20' }]}>
+                            <Text style={[styles.dueText, { color: DUE_COLORS[dueStatus] }]}>
+                              {dueStatus === 'overdue' ? '⚠️ Overdue' : '📅 Today'}
+                            </Text>
+                          </View>
+                        )}
+                        <View style={[styles.priorityBadge, { backgroundColor: PRIORITIES[task.priority as keyof typeof PRIORITIES]?.color + '20' }]}>
+                          <Text style={[styles.priorityText, { color: PRIORITIES[task.priority as keyof typeof PRIORITIES]?.color }]}>
+                            {PRIORITIES[task.priority as keyof typeof PRIORITIES]?.emoji} {task.priority}
+                          </Text>
+                        </View>
+                        {task.subtasks?.length > 0 && (
+                          <Text style={[styles.subtaskMeta, { color: isDark ? COLORS.dark.textTertiary : COLORS.light.textTertiary }]}>
+                            ✅ {task.subtasks.filter((s: any) => s.completed).length}/{task.subtasks.length}
+                          </Text>
+                        )}
                       </View>
-                      {task.subtasks?.length > 0 && (
-                        <Text style={[styles.subtaskMeta, { color: isDark ? COLORS.dark.textTertiary : COLORS.light.textTertiary }]}>
-                          ✅ {task.subtasks.filter((s: any) => s.completed).length}/{task.subtasks.length}
-                        </Text>
-                      )}
                     </View>
                   </View>
-                </View>
-                <TouchableOpacity
-                  testID={`complete-task-${task.task_id}`}
-                  style={styles.completeBtn}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    handleComplete(task.task_id);
-                  }}
-                >
-                  <Text style={styles.completeBtnText}>✓</Text>
+                  <TouchableOpacity
+                    testID={`complete-task-${task.task_id}`}
+                    style={styles.completeBtn}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleComplete(task.task_id);
+                    }}
+                  >
+                    <Text style={styles.completeBtnText}>✓</Text>
+                  </TouchableOpacity>
                 </TouchableOpacity>
-              </TouchableOpacity>
-            ))
+              );
+            });
+          })()}
           )}
         </View>
 
