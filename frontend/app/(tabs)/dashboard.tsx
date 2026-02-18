@@ -274,7 +274,6 @@ export default function DashboardScreen() {
               );
             });
           })()}
-          )}
         </View>
 
         {/* Motivational Quote */}
