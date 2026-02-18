@@ -222,6 +222,25 @@ frontend:
         agent: "main"
         comment: "Created PersonaChat component - bottom sheet modal for contextual AI conversations with personas"
 
+  - task: "Add Task Screen - Due Date and Reminder Pickers"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/app/add-task.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: |
+          Implemented Due Date and Reminder Time pickers with:
+          - Date shortcut buttons (Today, Tomorrow, Weekend, Next Week)
+          - Time shortcut buttons (9:00 AM, 2:00 PM, 6:00 PM)
+          - Native DateTimePicker for custom selection
+          - AI suggestions integration for due date and reminder
+          - Clear buttons to remove selections
+          - Reminder section only visible when due date is set
+
 metadata:
   created_by: "main_agent"
   version: "1.0"
