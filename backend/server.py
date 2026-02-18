@@ -562,7 +562,7 @@ async def unread_count(user: dict = Depends(get_current_user)):
 
 @api_router.post("/ai/suggest")
 async def ai_suggest_task(data: AISuggestRequest, user: dict = Depends(get_current_user)):
-    """AI auto-suggests with caching"""
+    """AI auto-suggests with caching - includes due date and reminder time suggestions"""
     import hashlib
     title_hash = hashlib.md5(data.title.lower().strip().encode()).hexdigest()
 
@@ -573,18 +573,31 @@ async def ai_suggest_task(data: AISuggestRequest, user: dict = Depends(get_curre
         return cached.get("result", {})
 
     from emergentintegrations.llm.chat import LlmChat, UserMessage
+    
+    # Get current date info for context
+    now = datetime.now(timezone.utc)
+    today_str = now.strftime("%A, %B %d, %Y")
+    
     chat = LlmChat(
         api_key=EMERGENT_LLM_KEY,
         session_id=f"suggest_{uuid.uuid4().hex[:8]}",
-        system_message="""You are a task planning AI. Given a task title, suggest:
+        system_message=f"""You are a task planning AI. Today is {today_str}. Given a task title, suggest:
 1. An emoji icon that represents the task
 2. Priority: "high", "medium", or "low"
 3. Estimated time in minutes
 4. A category (school, work, personal, health, creative, chores, social)
 5. Up to 3 relevant tags
+6. A suggested due date as one of: "today", "tomorrow", "this_weekend", "next_week", or null if no urgency detected
+7. A suggested reminder time as one of: "9:00", "14:00", "18:00", or null if no specific time needed
+
+Analyze the task for urgency signals:
+- Words like "urgent", "ASAP", "deadline", "due", "before" → suggest "today" or "tomorrow"
+- Morning activities → suggest "9:00" reminder
+- Afternoon/work tasks → suggest "14:00" reminder
+- Evening/personal tasks → suggest "18:00" reminder
 
 Respond in EXACTLY this JSON format, nothing else:
-{"emoji": "📚", "priority": "medium", "estimated_time": 30, "category": "school", "tags": ["homework", "reading"]}"""
+{{"emoji": "📚", "priority": "medium", "estimated_time": 30, "category": "school", "tags": ["homework", "reading"], "suggested_due": "tomorrow", "suggested_reminder": "9:00"}}"""
     )
     chat.with_model("anthropic", "claude-sonnet-4-5-20250929")
     msg = UserMessage(text=f"Task: {data.title}")
@@ -604,10 +617,10 @@ Respond in EXACTLY this JSON format, nothing else:
         return result
     except asyncio.TimeoutError:
         logger.warning(f"AI SUGGEST: Timeout for '{data.title}'")
-        return {"emoji": "📝", "priority": "medium", "estimated_time": 30, "category": "general", "tags": [], "timeout": True}
+        return {"emoji": "📝", "priority": "medium", "estimated_time": 30, "category": "general", "tags": [], "suggested_due": None, "suggested_reminder": None, "timeout": True}
     except Exception as e:
         logger.error(f"AI suggest error: {e}")
-        return {"emoji": "📝", "priority": "medium", "estimated_time": 30, "category": "general", "tags": []}
+        return {"emoji": "📝", "priority": "medium", "estimated_time": 30, "category": "general", "tags": [], "suggested_due": None, "suggested_reminder": None}
 
 @api_router.post("/ai/breakdown")
 async def ai_breakdown_task(data: AISuggestRequest, user: dict = Depends(get_current_user)):
