@@ -355,7 +355,17 @@ export default function AddTaskScreen() {
           )}
 
           {/* Due Date Section */}
-          <View style={[styles.dateSection, { backgroundColor: themeColors.surface, borderLeftColor: COLORS.primary }]} testID="due-date-section">
+          <TouchableOpacity 
+            style={[styles.dateSection, { backgroundColor: themeColors.surface, borderLeftColor: COLORS.primary }]} 
+            testID="due-date-section"
+            onPress={() => {
+              if (!dueDate) {
+                setTempDate(new Date());
+                setShowDatePicker(true);
+              }
+            }}
+            activeOpacity={dueDate ? 1 : 0.7}
+          >
             <View style={styles.dateSectionHeader}>
               <Text style={[styles.dateSectionIcon]}>📅</Text>
               <Text style={[styles.dateSectionTitle, { color: themeColors.text }]}>Due Date</Text>
