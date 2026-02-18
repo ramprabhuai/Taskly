@@ -188,9 +188,10 @@ export default function TasksScreen() {
               <Text style={[
                 styles.filterText, 
                 filter === f.id && styles.filterTextActive,
-                isOverdue && filter !== f.id && { color: DUE_COLORS.overdue }
+                isOverdue && filter !== f.id && { color: DUE_COLORS.overdue },
+                isCompleted && filter !== f.id && { color: COLORS.success }
               ]}>
-                {f.label} {count > 0 ? `(${count})` : ''}
+                {f.icon} {f.label} {count > 0 ? `(${count})` : ''}
               </Text>
             </TouchableOpacity>
           );
@@ -206,11 +207,12 @@ export default function TasksScreen() {
           <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>
         ) : filteredTasks.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>{filter === 'overdue' ? '🎉' : '📝'}</Text>
+            <Text style={styles.emptyEmoji}>{filter === 'overdue' ? '🎉' : filter === 'completed' ? '📭' : '📝'}</Text>
             <Text style={[styles.emptyText, { color: isDark ? COLORS.dark.textSecondary : COLORS.light.textSecondary }]}>
               {filter === 'overdue' ? 'No overdue tasks! Great job!' : 
                filter === 'today' ? 'No tasks due today' :
-               filter === 'tomorrow' ? 'No tasks due tomorrow' :
+               filter === 'completed' ? 'No completed tasks yet' :
+               filter === 'pending' ? 'All caught up! No pending tasks' :
                'No tasks here. Tap + to create one!'}
             </Text>
           </View>
