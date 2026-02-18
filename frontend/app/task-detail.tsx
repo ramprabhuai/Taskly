@@ -302,7 +302,11 @@ export default function TaskDetailScreen() {
       {!task.completed && (
         <View style={styles.footer}>
           <TouchableOpacity testID="complete-btn" style={styles.completeBtn} onPress={handleComplete} activeOpacity={0.8}>
-            <Text style={styles.completeBtnText}>Complete Task ✨</Text>
+            <Text style={styles.completeBtnText}>
+              {totalSubtasks > 0 
+                ? `Complete Task (${completedSubtasks}/${totalSubtasks}) ✨` 
+                : 'Complete Task ✨'}
+            </Text>
           </TouchableOpacity>
         </View>
       )}
