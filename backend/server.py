@@ -74,6 +74,7 @@ class TaskCreate(BaseModel):
     emoji: str = "📝"
     priority: str = "medium"
     due_date: Optional[str] = None
+    reminder_time: Optional[str] = None
     estimated_time: int = 30
     category: str = "general"
     tags: List[str] = []
@@ -85,6 +86,7 @@ class TaskUpdate(BaseModel):
     emoji: Optional[str] = None
     priority: Optional[str] = None
     due_date: Optional[str] = None
+    reminder_time: Optional[str] = None
     estimated_time: Optional[int] = None
     category: Optional[str] = None
     tags: Optional[List[str]] = None
