@@ -28,19 +28,19 @@ print('User ID: ' + userId);
 ## Step 2: Test Backend API
 ```bash
 # Guest login
-curl -X POST "https://smart-taskly.preview.emergentagent.com/api/auth/guest"
+curl -X POST "https://schedule-manager-59.preview.emergentagent.com/api/auth/guest"
 
 # Test with token from guest login response
 TOKEN="your-token-here"
-curl -X GET "https://smart-taskly.preview.emergentagent.com/api/auth/me" -H "Authorization: Bearer $TOKEN"
-curl -X GET "https://smart-taskly.preview.emergentagent.com/api/dashboard" -H "Authorization: Bearer $TOKEN"
-curl -X POST "https://smart-taskly.preview.emergentagent.com/api/tasks" -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" -d '{"title": "Test Task", "priority": "high"}'
+curl -X GET "https://schedule-manager-59.preview.emergentagent.com/api/auth/me" -H "Authorization: Bearer $TOKEN"
+curl -X GET "https://schedule-manager-59.preview.emergentagent.com/api/dashboard" -H "Authorization: Bearer $TOKEN"
+curl -X POST "https://schedule-manager-59.preview.emergentagent.com/api/tasks" -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" -d '{"title": "Test Task", "priority": "high"}'
 ```
 
 ## Step 3: Browser Testing
 ```javascript
 // Navigate to the app
-await page.goto("https://smart-taskly.preview.emergentagent.com");
+await page.goto("https://schedule-manager-59.preview.emergentagent.com");
 // Click Guest Login
 await page.click('[data-testid="guest-login-btn"]');
 // Complete onboarding steps...
