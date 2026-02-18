@@ -390,10 +390,25 @@ async def toggle_subtask(task_id: str, subtask_id: str, user: dict = Depends(get
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     subtasks = task.get("subtasks", [])
-    for st in subtasks:
+    found = False
+    for i, st in enumerate(subtasks):
+        # Handle subtasks that may not have subtask_id (generate one if missing)
+        if "subtask_id" not in st:
+            st["subtask_id"] = f"st_{uuid.uuid4().hex[:8]}"
         if st["subtask_id"] == subtask_id:
             st["completed"] = not st["completed"]
+            found = True
             break
+    if not found:
+        # Try matching by index if subtask_id is like "index_0", "index_1", etc.
+        if subtask_id.startswith("index_"):
+            try:
+                idx = int(subtask_id.split("_")[1])
+                if 0 <= idx < len(subtasks):
+                    subtasks[idx]["completed"] = not subtasks[idx]["completed"]
+                    found = True
+            except (ValueError, IndexError):
+                pass
     await db.tasks.update_one({"task_id": task_id}, {"$set": {"subtasks": subtasks}})
     return {"subtasks": subtasks}
 
