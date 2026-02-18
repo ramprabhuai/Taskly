@@ -105,12 +105,27 @@ export default function TasksScreen() {
         api.getTasks('active'),
         api.getTasks('completed'),
       ]);
-      setAllTasks([...activeTasks, ...completedTasks]);
-    } catch (e) { console.log('Tasks load error:', e); }
+      console.log('Loaded tasks:', { active: activeTasks?.length, completed: completedTasks?.length });
+      setAllTasks([...(activeTasks || []), ...(completedTasks || [])]);
+    } catch (e) { 
+      console.log('Tasks load error:', e); 
+      setAllTasks([]);
+    }
     finally { setLoading(false); setRefreshing(false); }
   }, []);
 
-  useEffect(() => { setLoading(true); loadTasks(); }, [loadTasks]);
+  // Load tasks on mount
+  useEffect(() => { 
+    setLoading(true); 
+    loadTasks(); 
+  }, [loadTasks]);
+
+  // Reload tasks when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadTasks();
+    }, [loadTasks])
+  );
 
   // Filter and sort tasks
   const filteredTasks = useMemo(() => {
