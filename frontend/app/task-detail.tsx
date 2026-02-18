@@ -77,8 +77,20 @@ export default function TaskDetailScreen() {
   };
 
   const handleToggleSubtask = async (subtaskId: string) => {
-    await api.toggleSubtask(id!, subtaskId);
-    loadTask();
+    try {
+      await api.toggleSubtask(id!, subtaskId);
+      loadTask();
+    } catch (e) {
+      console.log('Toggle subtask error:', e);
+      // Fallback: update locally if API fails
+      if (task?.subtasks) {
+        const updatedSubtasks = task.subtasks.map((st: any) => 
+          st.subtask_id === subtaskId ? { ...st, completed: !st.completed } : st
+        );
+        await api.updateTask(id!, { subtasks: updatedSubtasks });
+        loadTask();
+      }
+    }
   };
 
   // Bug 7: AI Breakdown
