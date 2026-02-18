@@ -435,11 +435,23 @@ export default function AddTaskScreen() {
                 <Text style={[styles.customDateText, { color: themeColors.textSecondary }]}>📆 Pick a date...</Text>
               </TouchableOpacity>
             )}
-          </View>
+          </TouchableOpacity>
 
           {/* Reminder Time Section - Only visible when due date is set */}
           {dueDate && (
-            <View style={[styles.dateSection, { backgroundColor: themeColors.surface, borderLeftColor: COLORS.primary }]} testID="reminder-section">
+            <TouchableOpacity 
+              style={[styles.dateSection, { backgroundColor: themeColors.surface, borderLeftColor: COLORS.primary }]} 
+              testID="reminder-section"
+              onPress={() => {
+                if (!reminderTime) {
+                  const defaultTime = new Date(dueDate);
+                  defaultTime.setHours(9, 0, 0, 0);
+                  setTempTime(defaultTime);
+                  setShowTimePicker(true);
+                }
+              }}
+              activeOpacity={reminderTime ? 1 : 0.7}
+            >
               <View style={styles.dateSectionHeader}>
                 <Text style={[styles.dateSectionIcon]}>⏰</Text>
                 <Text style={[styles.dateSectionTitle, { color: themeColors.text }]}>Reminder</Text>
