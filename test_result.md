@@ -155,6 +155,36 @@ backend:
         agent: "testing"
         comment: "✅ VERIFIED: Persona chat endpoint working correctly. Successfully tested POST /api/ai/persona-chat with Financial Coach persona. Received meaningful 956-character response with proper context. All required response fields present: response, session_id, persona_id, persona_name, persona_emoji. AI integration with Emergent LLM working properly."
 
+  - task: "Due Date AI Suggestions"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Enhanced /api/ai/suggest endpoint to return suggested_due and suggested_reminder based on task urgency analysis"
+      - working: true
+        agent: "main"
+        comment: "✅ Verified via curl: AI suggest now returns suggested_due='tomorrow' and suggested_reminder='9:00' for task 'urgent: prepare tax documents by tomorrow'"
+
+  - task: "Task Creation with Due Date and Reminder"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Updated task creation to store due_date and reminder_time fields in MongoDB"
+      - working: true
+        agent: "main"
+        comment: "✅ Verified via curl: Tasks created with due_date and reminder_time are stored correctly in DB"
+
 frontend:
   - task: "Add Task Screen - Persona Preview"
     implemented: true
