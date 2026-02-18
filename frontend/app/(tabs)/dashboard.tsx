@@ -8,6 +8,43 @@ import { api } from '../../src/utils/api';
 import { COLORS, SPACING, RADIUS, SHADOWS, PRIORITIES, MASCOTS } from '../../src/utils/constants';
 import { ConfettiEffect, XPPopup, BadgeUnlockPopup } from '../../src/components/Animations';
 
+// Due date colors
+const DUE_COLORS = {
+  overdue: '#FF4757',
+  today: '#FF6B6B',
+  tomorrow: '#FFB020',
+};
+
+// Helper to check if task is due today or overdue
+const getTaskDueStatus = (dueDate: string | null): 'overdue' | 'today' | null => {
+  if (!dueDate) return null;
+  
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const due = new Date(dueDate);
+  const dueDay = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+  
+  if (dueDay < today) return 'overdue';
+  if (dueDay.getTime() === today.getTime()) return 'today';
+  return null;
+};
+
+// Filter tasks for Today's Focus: due today or overdue
+const getTodayFocusTasks = (tasks: any[]): any[] => {
+  return tasks.filter(task => {
+    if (task.completed) return false;
+    const status = getTaskDueStatus(task.due_date);
+    return status === 'today' || status === 'overdue';
+  }).sort((a, b) => {
+    // Overdue first, then today
+    const statusA = getTaskDueStatus(a.due_date);
+    const statusB = getTaskDueStatus(b.due_date);
+    if (statusA === 'overdue' && statusB !== 'overdue') return -1;
+    if (statusB === 'overdue' && statusA !== 'overdue') return 1;
+    return 0;
+  });
+};
+
 export default function DashboardScreen() {
   const { user, refreshUser } = useAuth();
   const { colors, isDark, toggleTheme } = useTheme();
