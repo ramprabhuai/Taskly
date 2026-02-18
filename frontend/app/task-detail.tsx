@@ -88,7 +88,12 @@ export default function TaskDetailScreen() {
     try {
       const result = await api.aiBreakdown(task.title);
       if (result.subtasks) {
-        setAiSubtasks(result.subtasks);
+        // Deduplicate subtasks by title (case-insensitive) and limit to 6 max
+        const existingTitles = new Set((task.subtasks || []).map((s: any) => s.title.toLowerCase().trim()));
+        const uniqueSubtasks = result.subtasks
+          .filter((s: any) => !existingTitles.has(s.title.toLowerCase().trim()))
+          .slice(0, 6);
+        setAiSubtasks(uniqueSubtasks);
       }
     } catch (e) { console.log('Breakdown error:', e); }
     setBreakdownLoading(false);
@@ -97,11 +102,16 @@ export default function TaskDetailScreen() {
   const addAllSubtasks = async () => {
     if (aiSubtasks.length === 0) return;
     const currentSubtasks = task.subtasks || [];
-    const newSubtasks = [
-      ...currentSubtasks,
-      ...aiSubtasks.map(s => ({ title: s.title, estimated_time: s.estimated_time, completed: false })),
-    ];
-    await api.updateTask(id!, { subtasks: newSubtasks });
+    // Deduplicate again before adding
+    const existingTitles = new Set(currentSubtasks.map((s: any) => s.title.toLowerCase().trim()));
+    const uniqueNewSubtasks = aiSubtasks
+      .filter(s => !existingTitles.has(s.title.toLowerCase().trim()))
+      .map(s => ({ title: s.title, estimated_time: s.estimated_time, completed: false }));
+    
+    if (uniqueNewSubtasks.length > 0) {
+      const newSubtasks = [...currentSubtasks, ...uniqueNewSubtasks];
+      await api.updateTask(id!, { subtasks: newSubtasks });
+    }
     setAiSubtasks([]);
     loadTask();
   };
