@@ -311,6 +311,7 @@ async def create_task(task: TaskCreate, user: dict = Depends(get_current_user)):
         "emoji": task.emoji,
         "priority": task.priority,
         "due_date": task.due_date,
+        "reminder_time": task.reminder_time,
         "estimated_time": task.estimated_time,
         "category": task.category,
         "tags": task.tags,
