@@ -103,8 +103,11 @@
 #====================================================================================================
 
 user_problem_statement: |
-  Build a full-stack gamified AI-powered task manager mobile app called TASKLY with AI Personas feature (Phase 1).
-  The app should auto-detect task categories and assign specialized AI helpers (Financial Coach, Fitness Coach, etc.).
+  Build a full-stack gamified AI-powered task manager mobile app called TASKLY with:
+  1. AI Personas feature (Phase 1) - COMPLETE
+  2. Due Date and Reminder Time feature (Phase 1) - IN PROGRESS
+  
+  Current work: Implementing Due Date and Reminder pickers on the task creation screen.
   
 backend:
   - task: "Persona System - Task Classification"
